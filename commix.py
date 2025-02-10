@@ -3,15 +3,17 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2021 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2025 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
- 
+
 For more see the file 'readme/COPYING' for copying permission.
 """
+
+import sys
 
 # Dummy check for missing module(s).
 try:
@@ -19,11 +21,10 @@ try:
   from src.utils import version
   version.python_version()
 
-except ImportError:
-  err_msg = "Wrong installation detected (missing modules). "
-  err_msg = "Visit 'https://github.com/commixproject/commix/' for further details. \n"
-  print(settings.print_critical_msg(err_msg))
-  raise SystemExit()
+except ImportError as ex:
+  err_msg = "Wrong installation detected (i.e \"" + str(ex) + "\"). "
+  err_msg += "Visit 'https://github.com/commixproject/commix/' for further details."
+  sys.exit(err_msg)
 
 # Main
 def main():
@@ -35,14 +36,14 @@ if __name__ == '__main__':
     main()
   except SystemExit:
     import sys
-    raise SystemExit() 
+    raise SystemExit()
   except KeyboardInterrupt:
     import sys
-    raise SystemExit() 
+    raise SystemExit()
   except IndentationError as err_msg:
     from src.utils import settings
-    print(settings.print_critical_msg(err_msg) + ".\n")
-    raise SystemExit() 
+    settings.print_data_to_stdout(settings.print_critical_msg(err_msg))
+    raise SystemExit()
   except:
     from src.utils import common
     common.unhandled_exception()

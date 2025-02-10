@@ -3,7 +3,7 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2021 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2025 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -14,6 +14,7 @@ For more see the file 'readme/COPYING' for copying permission.
 """
 
 from src.utils import settings
+from src.thirdparty.six.moves import urllib as _urllib
 
 """
 About: Replaces space character ('%20') with vertical tab ('%0b').
@@ -21,15 +22,22 @@ Notes: This tamper script works against Windows targets.
 """
 
 __tamper__ = "space2vtab"
+space2vtab = "%0b"
 
-if settings.TARGET_OS == "win":
+if not settings.TAMPER_SCRIPTS[__tamper__]:
   settings.TAMPER_SCRIPTS[__tamper__] = True
-  if settings.WHITESPACES[0] == "%20":
-    settings.WHITESPACES[0] = "%0b"
-  else:
-    settings.WHITESPACES.append("%0b") 
-else:
-  warn_msg = "Unix target host(s), does not support vertical tab(s)."
-  print(settings.print_warning_msg(warn_msg))
 
-# eof 
+def tamper(payload):
+  if len(settings.WHITESPACES) != 0:
+    if settings.TARGET_OS == settings.OS.WINDOWS:
+      settings.TAMPER_SCRIPTS[__tamper__] = True
+      if settings.WHITESPACES[0] == _urllib.parse.quote(settings.SINGLE_WHITESPACE):
+        settings.WHITESPACES[0] = space2vtab
+      elif space2vtab not in settings.WHITESPACES:
+        settings.WHITESPACES.append(space2vtab)
+    else:
+      if space2vtab in settings.WHITESPACES:
+        settings.WHITESPACES.remove(space2vtab)
+  return payload
+
+# eof
