@@ -58,7 +58,7 @@ met:
     disclaimer in the documentation and/or other materials provided
     with the distribution.
 
-  * Neither the name of the the Beautiful Soup Consortium and All
+  * Neither the name of the Beautiful Soup Consortium and All
     Night Kosher Bakery nor the names of its contributors may be
     used to endorse or promote products derived from this software
     without specific prior written permission.
@@ -85,7 +85,6 @@ __copyright__ = "Copyright (c) 2004-2012 Leonard Richardson"
 __license__ = "New-style BSD"
 
 import codecs
-import types
 import re
 import sys
 
@@ -107,10 +106,11 @@ try:
 except NameError:
     from sets import Set as set
 
-try:
-    import sgmllib
-except ImportError:
-    from src.utils import sgmllib
+from src.utils import sgmllib
+# try:
+#     import sgmllib
+# except ImportError:
+#     from src.utils import sgmllib
 
 try:
     import markupbase
@@ -2029,6 +2029,5 @@ class UnicodeDammit:
 
 #By default, act as an HTML pretty-printer.
 if __name__ == '__main__':
-    import sys
     soup = BeautifulSoup(sys.stdin)
     print(soup.prettify())

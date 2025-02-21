@@ -2,14 +2,14 @@
 # -*- coding: utf-8 -*-
 
 """
-Flattens JSON objects in Python. 
+Flattens JSON objects in Python.
 flatten_json flattens the hierarchy in your object which can be useful if you want to force your objects into a table.
 
 https://github.com/amirziai/flatten
 """
 from src.utils import settings
-from collections import Iterable
-from collections import OrderedDict
+from src.thirdparty.odict import OrderedDict
+from src.thirdparty.six.moves import collections_abc as _collections
 
 def check_if_numbers_are_consecutive(list_):
     """
@@ -34,7 +34,7 @@ def _construct_key(previous_key, separator, new_key):
     else:
         return new_key
 
-def flatten(nested_dict, separator="_", root_keys_to_ignore=""):
+def flatten(nested_dict, separator=settings.FLATTEN_JSON_SEPARATOR, root_keys_to_ignore=""):
     """
     Flattens a dictionary with nested structure to a dictionary with no hierarchy
     Consider ignoring keys that you are not interested in to prevent unnecessary processing
@@ -46,10 +46,10 @@ def flatten(nested_dict, separator="_", root_keys_to_ignore=""):
     :return: flattened dictionary
     """
     try:
-        assert isinstance(nested_dict, dict), "The flatten() requires a dictionary input."
         assert isinstance(separator, str), "Separator must be a string"
+        # assert isinstance(nested_dict, dict), "The flatten() requires a dictionary input."
     except AssertionError as err_msg:
-        print(settings.print_critical_msg(err_msg))
+        settings.print_data_to_stdout(settings.print_critical_msg(err_msg))
         raise SystemExit()
 
     # This global dictionary stores the flattened keys and values and is ultimately returned
@@ -80,14 +80,14 @@ flatten_json = flatten
 
 def _unflatten_asserts(flat_dict, separator):
     try:
-        assert isinstance(flat_dict, dict), "The unflatten() requires a dictionary input."
         assert isinstance(separator, str), "Separator must be a string."
+        # assert isinstance(flat_dict, dict), "The unflatten() requires a dictionary input."
         # assert all(isinstance(value, (bool, float, int, str)) for value in flat_dict.values()), "The provided dictionary is not flat."
     except AssertionError as err_msg:
-        print(settings.print_critical_msg(err_msg))
+        settings.print_data_to_stdout(settings.print_critical_msg(err_msg))
         raise SystemExit()
 
-def unflatten(flat_dict, separator='_'):
+def unflatten(flat_dict, separator=settings.FLATTEN_JSON_SEPARATOR):
     """
     Creates a hierarchical dictionary from a flattened dictionary
     Assumes no lists are present
@@ -112,7 +112,7 @@ def unflatten(flat_dict, separator='_'):
 
     return unflattened_dict
 
-def unflatten_list(flat_dict, separator='_'):
+def unflatten_list(flat_dict, separator=settings.FLATTEN_JSON_SEPARATOR):
     """
     Unflattens a dictionary, first assuming no lists exist and then tries to identify lists and replaces them
     This is probably not very efficient and has not been tested extensively
